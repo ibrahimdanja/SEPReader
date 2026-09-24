@@ -3,30 +3,37 @@ package com.ibrahim.sepreader;
 import android.app.*;import android.content.*;import android.content.res.ColorStateList;import android.graphics.Color;import android.graphics.Typeface;import android.graphics.drawable.*;import android.net.Uri;import android.os.*;import android.view.*;import android.view.inputmethod.EditorInfo;import android.webkit.*;import android.widget.*;import java.io.*;import java.util.*;import org.json.JSONArray;
 
 public class MainActivity extends Activity {
- private LinearLayout root, content; private ScrollView sc; private WebView web; private EditText search; private TextView star, offlineBtn; private boolean dark=false; private final String HOME="https://plato.stanford.edu/"; private SharedPreferences prefs;
+ private LinearLayout root, content, bar; private ScrollView sc; private WebView web; private EditText search;
+ private TextView star, offlineBtn, themeBtn, titleTv; private View dividerView;
+ private String theme="paper"; // paper | dim | black | sepia
+ private final String HOME="https://plato.stanford.edu/"; private SharedPreferences prefs;
  private static final String SEP="\u0001";
- int bg(){return dark?Color.parseColor("#121212"):Color.parseColor("#F7F4EE");}
- int card(){return dark?Color.parseColor("#1E1E1E"):Color.WHITE;}
- int ink(){return dark?Color.parseColor("#ECE8E1"):Color.parseColor("#1C1B18");}
- int muted(){return dark?Color.parseColor("#A39C8E"):Color.parseColor("#6F6A61");}
- int accent(){return dark?Color.parseColor("#D8A25E"):Color.parseColor("#8A5A2B");}
- int ripple(){return dark?Color.parseColor("#33FFFFFF"):Color.parseColor("#1A000000");}
+
+ int bg(){switch(theme){case "dim":return Color.parseColor("#121212");case "black":return Color.BLACK;case "sepia":return Color.parseColor("#F4ECD8");default:return Color.parseColor("#F7F4EE");}}
+ int card(){switch(theme){case "dim":return Color.parseColor("#1E1E1E");case "black":return Color.parseColor("#141414");case "sepia":return Color.parseColor("#FBF4E4");default:return Color.WHITE;}}
+ int ink(){switch(theme){case "dim":return Color.parseColor("#ECE8E1");case "black":return Color.parseColor("#E5E1D8");case "sepia":return Color.parseColor("#3B2F22");default:return Color.parseColor("#1C1B18");}}
+ int muted(){switch(theme){case "dim":return Color.parseColor("#A39C8E");case "black":return Color.parseColor("#8F897C");case "sepia":return Color.parseColor("#7A6A54");default:return Color.parseColor("#6F6A61");}}
+ int accent(){switch(theme){case "dim":case "black":return Color.parseColor("#D8A25E");case "sepia":return Color.parseColor("#7A4B21");default:return Color.parseColor("#8A5A2B");}}
+ int ripple(){return isDark()?Color.parseColor("#33FFFFFF"):Color.parseColor("#1A000000");}
+ boolean isDark(){return theme.equals("dim")||theme.equals("black");}
  int dp(float v){return (int)(v*getResources().getDisplayMetrics().density+.5f);}
  TextView tv(String s,float size){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(ink());t.setPadding(dp(18),dp(10),dp(18),dp(10));return t;}
  Drawable cardBg(){GradientDrawable g=new GradientDrawable();g.setColor(card());g.setCornerRadius(dp(14));return new RippleDrawable(ColorStateList.valueOf(ripple()),g,null);}
 
- @Override public void onCreate(Bundle b){super.onCreate(b); prefs=getSharedPreferences("sep",0); dark=prefs.getBoolean("dark",false); buildHome();}
+ @Override public void onCreate(Bundle b){super.onCreate(b); prefs=getSharedPreferences("sep",0); theme=prefs.getString("theme","paper"); buildHome();}
 
- void buildHome(){root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(bg());
+ void buildHome(){
+  root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(bg());
 
-  LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);
-  TextView title=tv("SEP Reader",22);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);if(android.os.Build.VERSION.SDK_INT>=21)title.setLetterSpacing(0.01f);title.setOnClickListener(v->goHome());bar.addView(title,new LinearLayout.LayoutParams(0,dp(64),1));
-  offlineBtn=tv("⬇",20);offlineBtn.setGravity(Gravity.CENTER);offlineBtn.setTextColor(accent());offlineBtn.setOnClickListener(v->toggleOffline());bar.addView(offlineBtn,new LinearLayout.LayoutParams(dp(52),dp(64)));
-  star=tv("☆",22);star.setGravity(Gravity.CENTER);star.setTextColor(accent());star.setOnClickListener(v->toggleBookmark());bar.addView(star,new LinearLayout.LayoutParams(dp(52),dp(64)));
-  TextView theme=tv(dark?"☀":"☾",22);theme.setGravity(Gravity.CENTER);theme.setTextColor(accent());theme.setOnClickListener(v->{dark=!dark;prefs.edit().putBoolean("dark",dark).apply();buildHome();});bar.addView(theme,new LinearLayout.LayoutParams(dp(58),dp(64)));
+  bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);
+  titleTv=tv("SEP Reader",21);titleTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);titleTv.setOnClickListener(v->goHome());bar.addView(titleTv,new LinearLayout.LayoutParams(0,dp(64),1));
+  TextView aa=tv("Aa",18);aa.setGravity(Gravity.CENTER);aa.setTextColor(accent());aa.setOnClickListener(v->showReadingSettings());bar.addView(aa,new LinearLayout.LayoutParams(dp(46),dp(64)));
+  offlineBtn=tv("⬇",19);offlineBtn.setGravity(Gravity.CENTER);offlineBtn.setTextColor(accent());offlineBtn.setOnClickListener(v->toggleOffline());bar.addView(offlineBtn,new LinearLayout.LayoutParams(dp(46),dp(64)));
+  star=tv("☆",21);star.setGravity(Gravity.CENTER);star.setTextColor(accent());star.setOnClickListener(v->toggleBookmark());bar.addView(star,new LinearLayout.LayoutParams(dp(46),dp(64)));
+  themeBtn=tv(isDark()?"☀":"☾",21);themeBtn.setGravity(Gravity.CENTER);themeBtn.setTextColor(accent());themeBtn.setOnClickListener(v->quickToggleTheme());bar.addView(themeBtn,new LinearLayout.LayoutParams(dp(52),dp(64)));
   root.addView(bar);
 
-  View divider=new View(this);divider.setBackgroundColor(dark?Color.parseColor("#262626"):Color.parseColor("#E7E1D6"));root.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));
+  dividerView=new View(this);dividerView.setBackgroundColor(isDark()?Color.parseColor("#262626"):Color.parseColor("#E7E1D6"));root.addView(dividerView,new LinearLayout.LayoutParams(-1,dp(1)));
 
   search=new EditText(this);search.setHint("Search philosophy…");search.setHintTextColor(muted());search.setTextColor(ink());search.setSingleLine();search.setBackground(null);search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);search.setPadding(dp(18),0,dp(18),0);root.addView(search,new LinearLayout.LayoutParams(-1,dp(54)));search.setOnEditorActionListener((v,a,e)->{openSearch(search.getText().toString());return true;});
 
@@ -38,16 +45,15 @@ public class MainActivity extends Activity {
   addSection("Explore", new String[]{"Featured entries","Table of contents","Recently read","Bookmarks","Saved offline"},
    new Runnable[]{()->open(HOME),()->open(HOME+"contents.html"),()->showEntries("Recently read","recent"),()->showEntries("Bookmarks","bookmarks"),()->showOffline()});
 
-  TextView note=tv("Tip\nSearch for an entry such as Aristotle, consciousness, free will, existentialism, or philosophy of mind. Tap ☆ while reading to bookmark, or ⬇ to save it for offline reading.",14);note.setTextColor(muted());note.setBackground(cardBg());note.setPadding(dp(16),dp(14),dp(16),dp(14));LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);np.setMargins(dp(8),dp(20),dp(8),dp(8));content.addView(note,np);
+  TextView note=tv("Tip\nTap ☆ to bookmark, ⬇ to save an article for offline reading, and Aa to change the reading theme or text size.",14);note.setTextColor(muted());note.setBackground(cardBg());note.setPadding(dp(16),dp(14),dp(16),dp(14));LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);np.setMargins(dp(8),dp(20),dp(8),dp(8));content.addView(note,np);
 
   setContentView(root); updateStar();
  }
 
  void addSection(String head,String[] labels,Runnable[] actions){
-  TextView h=tv(head.toUpperCase(Locale.ROOT),13);h.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.setTextColor(muted());if(android.os.Build.VERSION.SDK_INT>=21)h.setLetterSpacing(0.08f);h.setPadding(dp(8),dp(6),dp(8),dp(8));content.addView(h);
+  TextView h=tv(head.toUpperCase(Locale.ROOT),13);h.setTypeface(Typeface.DEFAULT,Typeface.BOLD);h.setTextColor(muted());if(Build.VERSION.SDK_INT>=21)h.setLetterSpacing(0.08f);h.setPadding(dp(8),dp(6),dp(8),dp(8));content.addView(h);
   for(int i=0;i<labels.length;i++){
-   TextView x=tv(labels[i],16);x.setTextColor(ink());x.setBackground(cardBg());
-   x.setText(labels[i]+"   ›");
+   TextView x=tv(labels[i]+"   ›",16);x.setTextColor(ink());x.setBackground(cardBg());
    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(dp(8),dp(4),dp(8),dp(4));
    final Runnable act=actions[i];x.setOnClickListener(v->act.run());
    content.addView(x,lp);
@@ -59,7 +65,7 @@ public class MainActivity extends Activity {
  void open(String url){
   if(web!=null) root.removeView(web);
   web=new WebView(this); web.setBackgroundColor(bg());
-  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setBuiltInZoomControls(false);
+  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setBuiltInZoomControls(false);s.setTextZoom(prefs.getInt("zoom",100));
   web.setWebViewClient(new WebViewClient(){
    @Override public boolean shouldOverrideUrlLoading(WebView v,String u){return false;}
    @Override public void onPageFinished(WebView v,String u){inject();String t=v.getTitle();saveRecent((t==null||t.isEmpty())?u:t,u);updateStar();}
@@ -73,23 +79,71 @@ public class MainActivity extends Activity {
  void openOffline(String filename,String url){
   if(web!=null) root.removeView(web);
   web=new WebView(this); web.setBackgroundColor(bg());
-  web.getSettings().setJavaScriptEnabled(true);
+  web.getSettings().setJavaScriptEnabled(true);web.getSettings().setTextZoom(prefs.getInt("zoom",100));
   try{ File f=new File(getFilesDir(),"offline/"+filename); String html=readFile(f); web.loadDataWithBaseURL(url,html,"text/html","utf-8",null); }
   catch(IOException e){ Toast.makeText(this,"Couldn't open saved article",Toast.LENGTH_SHORT).show(); }
   sc.setVisibility(View.GONE); root.addView(web,new LinearLayout.LayoutParams(-1,0,1)); updateStar();
  }
 
- void goHome(){if(web!=null){root.removeView(web);web=null;} sc.setVisibility(View.VISIBLE); updateStar();}
+ void goHome(){ if(web!=null){root.removeView(web);web=null;} buildHome(); }
+
+ void refreshArticleChrome(){
+  root.setBackgroundColor(bg());
+  titleTv.setTextColor(ink());
+  offlineBtn.setTextColor(accent());
+  star.setTextColor(accent());
+  themeBtn.setTextColor(accent());themeBtn.setText(isDark()?"☀":"☾");
+  dividerView.setBackgroundColor(isDark()?Color.parseColor("#262626"):Color.parseColor("#E7E1D6"));
+  if(web!=null) web.setBackgroundColor(bg());
+  inject();
+ }
+
+ void quickToggleTheme(){ theme = theme.equals("paper") ? "dim" : "paper"; prefs.edit().putString("theme",theme).apply(); onThemeChanged(); }
+
+ void onThemeChanged(){ if(web!=null) refreshArticleChrome(); else buildHome(); }
+
+ void showReadingSettings(){
+  LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(24),dp(12),dp(24),dp(4));
+
+  TextView themeLabel=tv("Theme",14);themeLabel.setTextColor(muted());themeLabel.setPadding(0,0,0,dp(6));box.addView(themeLabel);
+  LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);
+  String[] names={"paper","dim","black","sepia"};String[] labels={"Paper","Dim","Black","Sepia"};
+  for(int i=0;i<names.length;i++){
+   final String tName=names[i];
+   TextView swatch=tv(labels[i],13);swatch.setGravity(Gravity.CENTER);swatch.setPadding(dp(10),dp(10),dp(10),dp(10));
+   swatch.setBackground(cardBg());
+   if(theme.equals(tName)){ GradientDrawable gd=new GradientDrawable();gd.setColor(card());gd.setCornerRadius(dp(10));gd.setStroke(dp(2),accent());swatch.setBackground(gd); }
+   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(4),0,dp(4),0);
+   swatch.setOnClickListener(v->{ theme=tName; prefs.edit().putString("theme",theme).apply(); onThemeChanged(); });
+   row.addView(swatch,lp);
+  }
+  box.addView(row,new LinearLayout.LayoutParams(-1,-2));
+
+  TextView sizeLabel=tv("Text size",14);sizeLabel.setTextColor(muted());sizeLabel.setPadding(0,dp(18),0,dp(6));box.addView(sizeLabel);
+  LinearLayout sizeRow=new LinearLayout(this);sizeRow.setOrientation(LinearLayout.HORIZONTAL);sizeRow.setGravity(Gravity.CENTER_VERTICAL);
+  TextView minus=tv("A−",18);minus.setGravity(Gravity.CENTER);minus.setBackground(cardBg());minus.setPadding(dp(20),dp(10),dp(20),dp(10));
+  TextView pct=tv(prefs.getInt("zoom",100)+"%",15);pct.setGravity(Gravity.CENTER);
+  TextView plus=tv("A+",18);plus.setGravity(Gravity.CENTER);plus.setBackground(cardBg());plus.setPadding(dp(20),dp(10),dp(20),dp(10));
+  minus.setOnClickListener(v->{int z=Math.max(70,prefs.getInt("zoom",100)-15);prefs.edit().putInt("zoom",z).apply();pct.setText(z+"%");if(web!=null)web.getSettings().setTextZoom(z);});
+  plus.setOnClickListener(v->{int z=Math.min(160,prefs.getInt("zoom",100)+15);prefs.edit().putInt("zoom",z).apply();pct.setText(z+"%");if(web!=null)web.getSettings().setTextZoom(z);});
+  LinearLayout.LayoutParams mlp=new LinearLayout.LayoutParams(0,-2,1);mlp.setMargins(0,0,dp(8),0);
+  LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,-2,1);plp.setMargins(dp(8),0,0,0);
+  sizeRow.addView(minus,mlp);sizeRow.addView(pct,new LinearLayout.LayoutParams(dp(60),-2));sizeRow.addView(plus,plp);
+  box.addView(sizeRow,new LinearLayout.LayoutParams(-1,-2));
+
+  new AlertDialog.Builder(this).setTitle("Reading settings").setView(box).setPositiveButton("Done",null).show();
+ }
 
  void inject(){
   if(web==null)return;
-  String bg=dark?"#121212":"#F7F4EE",card=dark?"#1E1E1E":"#FFFFFF",fg=dark?"#ECE8E1":"#1C1B18",link=dark?"#D8A25E":"#8A5A2B",border=dark?"rgba(255,255,255,0.10)":"rgba(0,0,0,0.10)";
-  String css="html,body{background:"+bg+" !important;color:"+fg+" !important;}"
+  String bgc=String.format("#%06X",0xFFFFFF & bg()),cardc=String.format("#%06X",0xFFFFFF & card()),fgc=String.format("#%06X",0xFFFFFF & ink()),linkc=String.format("#%06X",0xFFFFFF & accent());
+  String border=isDark()?"rgba(255,255,255,0.10)":"rgba(0,0,0,0.10)";
+  String css="html,body{background:"+bgc+" !important;color:"+fgc+" !important;}"
    +"*{background-color:transparent !important;border-color:"+border+" !important;box-shadow:none !important;}"
-   +"a,a:visited{color:"+link+" !important;}"
-   +"table,pre,code,blockquote,.pullquote,.note,#toc{background:"+card+" !important;}"
+   +"a,a:visited{color:"+linkc+" !important;}"
+   +"table,pre,code,blockquote,.pullquote,.note,#toc{background:"+cardc+" !important;}"
    +"img{opacity:.94;}"
-   +"::selection{background:"+link+";color:"+bg+";}";
+   +"::selection{background:"+linkc+";color:"+bgc+";}";
   String js="javascript:(function(){var s=document.getElementById('sepReaderStyle');if(!s){s=document.createElement('style');s.id='sepReaderStyle';document.head.appendChild(s);}s.innerHTML="+org.json.JSONObject.quote(css)+";})()";
   web.evaluateJavascript(js,null);
  }
